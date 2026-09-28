@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Colorful Calculator</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:#1e1b4b;background:linear-gradient(135deg,#0f172a,#4c1d95 55%,#be185d);background-attachment:fixed;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;justify-content:center;align-items:center;padding:20px 14px}
+.calc{width:100%;max-width:340px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:26px;padding:18px;box-shadow:0 16px 50px rgba(0,0,0,.45)}
+.screen{background:#0b1020;border-radius:18px;padding:14px 16px;margin-bottom:14px;text-align:right;min-height:96px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+.hist{color:#94a3b8;font-size:1rem;min-height:22px;word-break:break-all}
+.cur{color:#fff;font-size:2.4rem;font-weight:700;word-break:break-all;line-height:1.15}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+button{border:none;border-radius:16px;padding:16px 0;font-size:1.25rem;font-weight:700;color:#fff;cursor:pointer;transition:transform .1s,filter .15s;background:#334155}
+button:hover{filter:brightness(1.15)}
+button:active{transform:scale(.92)}
+.num{background:linear-gradient(135deg,#3b82f6,#6366f1)}
+.op{background:linear-gradient(135deg,#f59e0b,#f97316)}
+.fn{background:linear-gradient(135deg,#ef4444,#ec4899)}
+.eq{background:linear-gradient(135deg,#10b981,#06b6d4);grid-row:span 2}
+.zero{grid-column:span 2}
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="screen">
+    <div class="hist" id="hist"></div>
+    <div class="cur" id="cur">0</div>
+  </div>
+  <div class="keys" id="keys">
+    <button class="fn" data-a="clear">AC</button>
+    <button class="fn" data-a="del">⌫</button>
+    <button class="fn" data-a="percent">%</button>
+    <button class="op" data-a="op" data-v="÷">÷</button>
+
+    <button class="num" data-a="num" data-v="7">7</button>
+    <button class="num" data-a="num" data-v="8">8</button>
+    <button class="num" data-a="num" data-v="9">9</button>
+    <button class="op" data-a="op" data-v="×">×</button>
+
+    <button class="num" data-a="num" data-v="4">4</button>
+    <button class="num" data-a="num" data-v="5">5</button>
+    <button class="num" data-a="num" data-v="6">6</button>
+    <button class="op" data-a="op" data-v="−">−</button>
+
+    <button class="num" data-a="num" data-v="1">1</button>
+    <button class="num" data-a="num" data-v="2">2</button>
+    <button class="num" data-a="num" data-v="3">3</button>
+    <button class="op" data-a="op" data-v="+">+</button>
+
+    <button class="num zero" data-a="num" data-v="0">0</button>
+    <button class="num" data-a="dot">.</button>
+    <button class="eq" data-a="eq" style="grid-row:auto">=</button>
+  </div>
+</div>
+<script>
+let cur = "0", prev = null, op = null, fresh = false;
+const curEl = document.getElementById("cur"), histEl = document.getElementById("hist");
+
+function calc(a, b, o) {
+  a = parseFloat(a); b = parseFloat(b);
+  if (o === "+") return a + b;
+  if (o === "−") return a - b;
+  if (o === "×") return a * b;
+  if (o === "÷") return b === 0 ? "Error" : a / b;
+  return b;
+}
+function fmt(n) {
+  if (n === "Error") return n;
+  return String(parseFloat(Number(n).toPrecision(12)));
+}
+function update() {
+  curEl.textContent = cur;
+  curEl.style.fontSize = cur.length > 10 ? "1.5rem" : cur.length > 7 ? "1.9rem" : "2.4rem";
+  histEl.textContent = prev !== null && op ? prev + " " + op : "";
+}
+function handle(a, v) {
+  if (cur === "Error" && a !== "clear") { cur = "0"; prev = null; op = null; }
+  if (a === "num") {
+    if (fresh) { cur = "0"; fresh = false; }
+    if (cur.replace(/[-.]/g, "").length >= 12) return;
+    cur = cur === "0" ? v : cur + v;
+  } else if (a === "dot") {
+    if (fresh) { cur = "0"; fresh = false; }
+    if (!cur.includes(".")) cur += ".";
+  } else if (a === "clear") {
+    cur = "0"; prev = null; op = null; fresh = false;
+  } else if (a === "del") {
+    cur = cur.length > 1 ? cur.slice(0, -1) : "0";
+    if (cur === "-") cur = "0";
+  } else if (a === "percent") {
+    cur = fmt(parseFloat(cur) / 100);
+  } else if (a === "op") {
+    if (prev !== null && op && !fresh) { cur = fmt(calc(prev, cur, op)); }
+    prev = cur; op = v; fresh = true;
+  } else if (a === "eq") {
+    if (prev !== null && op) {
+      histEl.textContent = prev + " " + op + " " + cur + " =";
+      cur = fmt(calc(prev, cur, op));
+      prev = null; op = null; fresh = true;
+      curEl.textContent = cur;
+      return;
+    }
+  }
+  update();
+}
+document.getElementById("keys").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (b) handle(b.dataset.a, b.dataset.v);
+});
+document.addEventListener("keydown", e => {
+  const k = e.key;
+  if (/^[0-9]$/.test(k)) handle("num", k);
+  else if (k === ".") handle("dot");
+  else if (k === "+") handle("op", "+");
+  else if (k === "-") handle("op", "−");
+  else if (k === "*") handle("op", "×");
+  else if (k === "/") { e.preventDefault(); handle("op", "÷"); }
+  else if (k === "Enter" || k === "=") handle("eq");
+  else if (k === "Backspace") handle("del");
+  else if (k === "Escape") handle("clear");
+  else if (k === "%") handle("percent");
+});
+update();
+</script>
+</body>
+</html>
